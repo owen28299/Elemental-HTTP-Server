@@ -2,6 +2,7 @@ var http = require('http');
 var fs = require('fs');
 var domGen = require('./domGenerator.js');
 var toHTML = domGen();
+var users = require('./users.js');
 
 function replaceAt(string, index, newtext) {
   return string.substring(0, index) + newtext + string.substring(index + 1);
@@ -27,9 +28,9 @@ server.on('request',function(request,response){
       "success" : true
   };
 
-  if(!headers.authorization){
 
-    console.log('headers.authorization', headers.authorization);
+
+  if(!headers.authorization){
 
     response.writeHead(401, {
       'Content-Type': 'text/html',
@@ -44,7 +45,6 @@ server.on('request',function(request,response){
 
     var encodedString = headers.authorization;
     encodedString = encodedString.substring(encodedString.indexOf("Basic ") + 6);
-    console.log('encodedString', encodedString);
 
     var base64Buffer = new Buffer(encodedString, 'base64');
     var decodedString = base64Buffer.toString();
@@ -94,11 +94,15 @@ server.on('request',function(request,response){
             var newFile = fs.createWriteStream("./public/" + cedObj.elementName + ".html");
             newFile.write(htmlDoc);
 
+
             fs.readFile("./public/index.html", 'utf8', function(error, data){
               var indexFile = data;
               var newIndex = fs.createWriteStream("./public/index.html");
+              var totalFiles = fs.readdirSync('./public').length - 4;
               var prepend = indexFile.indexOf("prepend") + 9;
-              newIndex.write(replaceAt(indexFile, prepend, "\n    <li><a href=\'/" + cedObj.elementName + ".html\'>" + cedObj.elementName + "</a>" + "</li>\n"));
+              var newHTML = replaceAt(indexFile, prepend, "\n    <li><a href=\'/" + cedObj.elementName + ".html\'>" + cedObj.elementName + "</a>" + "</li>\n");
+              newHTML = replaceAt(newHTML, newHTML.indexOf("<span>") + 6, totalFiles);
+              newIndex.write(newHTML);
             });
 
             response.writeHead(200, {
@@ -271,6 +275,16 @@ server.on('request',function(request,response){
           }
 
           else {
+            fs.readFile("./public/index.html", 'utf8', function(error, data){
+              var indexFile = data;
+              var newIndex = fs.createWriteStream("./public/index.html");
+              var toDelete = indexFile.indexOf(url);
+              var totalFiles = fs.readdirSync('./public').length - 4;
+              var newHTML = indexFile.substring(0,toDelete - 13) + indexFile.substring(toDelete + url.length + 11 + 9) + "\n";
+              newHTML = replaceAt(newHTML, newHTML.indexOf("<span>") + 6, totalFiles);
+              newIndex.write(newHTML);
+            });
+
             code = 200;
             response.writeHead(code, {
               'Content-Type': 'application/json',
